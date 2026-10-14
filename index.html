@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LLM-Driven Target Trial Emulation</title>
+<meta name="description" content="An LLM-driven, human-in-the-loop framework that extracts target trial emulation design parameters from the CREST-2 protocol, generates executable EHR phenotyping pipelines, and compares real-world outcomes with published trial endpoints. AMIA 2026 Podium Presentation.">
+<meta name="keywords" content="target trial emulation, large language models, retrieval-augmented generation, human-in-the-loop, CREST-2, carotid stenting, real-world evidence, EHR phenotyping, AMIA 2026">
+<meta name="author" content="Samrat Kumar Dey, Adnan I. Qureshi, Chi-Ren Shyu">
+<meta property="og:type" content="website">
+<meta property="og:title" content="LLM-Driven Target Trial Emulation with Human-in-the-Loop Validation">
+<meta property="og:description" content="Automated protocol extraction and real-world outcome evaluation for CREST-2. AMIA 2026 Podium Presentation.">
+<meta property="og:image" content="static/images/fig1_architecture.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1d2a'/%3E%3Cpath d='M6 20h5l2-8 3 12 3-16 2 12h5' fill='none' stroke='%23f0677e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+
+<!-- Icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pdf" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="M14 3v5h5"/><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M8.5 13h7M8.5 16.5h5"/></symbol>
+  <symbol id="i-medrxiv" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M7.5 17V7.5h3.2a2.6 2.6 0 0 1 0 5.2H7.5M10.4 12.7 16.5 18M13.5 13.5l3-3.5"/></symbol>
+  <symbol id="i-podium" viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6 10.5a6 6 0 0 0 12 0M12 16.5V21M8 21h8"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 4.5l-3 15"/></symbol>
+  <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.8a10.2 10.2 0 0 0-3.2 19.9c.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.6 1 1.6 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.3-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.5-1.3.1-2.7 0 0 .9-.3 2.8 1a9.6 9.6 0 0 1 5.1 0c1.9-1.3 2.8-1 2.8-1 .6 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.8v2.7c0 .3.2.6.7.5A10.2 10.2 0 0 0 12 1.8z"/></symbol>
+  <symbol id="i-quote" viewBox="0 0 24 24"><path fill="currentColor" d="M4 18v-5.2C4 8.6 6.2 6 9.8 5.4l.6 1.7C8.3 7.8 7.3 9.2 7.2 11H10v7zm9.5 0v-5.2c0-4.2 2.2-6.8 5.8-7.4l.6 1.7c-2.1.7-3.1 2.1-3.2 3.9h2.8v7z"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 6h16M4 10h16M4 14h16M4 18h10"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 2.8 4.5 5.6v6c0 4.6 3.1 8.4 7.5 9.6 4.4-1.2 7.5-5 7.5-9.6v-6z"/><rect x="8.8" y="10.8" width="6.4" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M10.2 10.8V9.4a1.8 1.8 0 0 1 3.6 0v1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+</svg>
+
+<nav class="nav" aria-label="Sections">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--ink)"/><path d="M6 20h5l2-8 3 12 3-16 2 12h5" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>LLM-TTE · CREST-2</span>
+    </a>
+    <div class="nav-links">
+      <a href="#abstract">Overview</a>
+      <a href="#framework">Framework</a>
+      <a href="#design">Design Parameters</a>
+      <a href="#hitl">Human-in-the-Loop</a>
+      <a href="#results">Results</a>
+      <a href="#concordance">Concordance</a>
+      <a href="#citation">Citation</a>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle dark mode"><svg><use href="#i-moon"/></svg></button>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <a class="podium" href="https://amia.secure-platform.com/symposium/gallery/rounds/82037/details/30164" target="_blank" rel="noopener">
+          <span class="dot"><svg><use href="#i-podium"/></svg></span>
+          Accepted · Podium Presentation · AMIA 2026 Annual Symposium
+        </a>
+        <h1>LLM-Driven Target Trial Emulation with Human-in-the-Loop Validation for Randomized Trial <em>Automated Protocol Extraction and Real-World Outcome Evaluation</em></h1>
+
+        <div class="authors">
+          <span>Samrat Kumar Dey, MS<sup>1</sup></span>
+          <span>Adnan I. Qureshi, MD<sup>2</sup></span>
+          <span>Chi-Ren Shyu, PhD, FACMI<sup>1,3</sup></span>
+        </div>
+        <div class="affils">
+          <span><sup>1</sup>Institute for Data Science and Informatics, University of Missouri, Columbia, MO, USA</span>
+          <span><sup>2</sup>Department of Neurology, University of Missouri, Columbia, MO, USA; Zeenat Qureshi Stroke Institute, USA</span>
+          <span><sup>3</sup>Department of Electrical Engineering and Computer Science, University of Missouri, Columbia, MO, USA</span>
+        </div>
+
+        <div class="btns">
+          <a class="btn" href="static/pdf/Dey_LLM-TTE_AMIA2026.pdf" target="_blank" rel="noopener"><svg><use href="#i-pdf"/></svg>Paper</a>
+          <a class="btn medrxiv" href="https://www.medrxiv.org/content/10.64898/2026.04.09.26350523v1.full" target="_blank" rel="noopener"><svg><use href="#i-medrxiv"/></svg>medRxiv <span class="tag">preprint</span></a>
+          <a class="btn amia" href="https://amia.secure-platform.com/symposium/gallery/rounds/82037/details/30164" target="_blank" rel="noopener"><svg><use href="#i-podium"/></svg>AMIA 2026 <span class="tag">podium</span></a>
+          <a class="btn ghost" href="#availability"><svg><use href="#i-code"/></svg>Code</a>
+          <a class="btn ghost" href="#abstract"><svg><use href="#i-text"/></svg>Abstract</a>
+          <a class="btn ghost" href="#citation"><svg><use href="#i-quote"/></svg>BibTeX</a>
+        </div>
+
+        <div class="chips">
+          <span class="chip">Target Trial Emulation</span>
+          <span class="chip">RAG Protocol Parsing</span>
+          <span class="chip">Qwen3:8B · local Ollama</span>
+          <span class="chip">CREST-2 (NEJM)</span>
+          <span class="chip">Oracle Health RWD</span>
+          <span class="chip">Human-in-the-Loop</span>
+        </div>
+      </div>
+
+      <aside class="glance" aria-labelledby="glance-h">
+        <div class="eyebrow">Headline result</div>
+        <h3 id="glance-h">LLM-built EHR emulation vs. the CREST-2 stenting arm</h3>
+        <div class="legend">
+          <span><i class="l-ehr"></i>LLM-derived EHR (N = 5,831)</span>
+          <span><i class="l-trial"></i>CREST-2 CAS (N = 616)</span>
+        </div>
+        <svg class="forest" id="forest" viewBox="0 0 420 250" role="img" aria-label="Forest plot of event rates with 95% confidence intervals for three endpoints, EHR versus CREST-2"></svg>
+        <p class="small muted">Event rate (%) with 95% CI. All three endpoints have SMD &lt; 0.10, overlapping CIs and z-test p &gt; 0.05.</p>
+      </aside>
+    </div>
+
+    <div class="stats" role="list">
+      <div class="stat" role="listitem"><b class="num">92.3%</b><span>first-pass extraction accuracy (24/26)</span></div>
+      <div class="stat" role="listitem"><b class="num">0.960</b><span>F1-score · precision 1.00, recall 0.923</span></div>
+      <div class="stat" role="listitem"><b class="num">5,831</b><span>asymptomatic CAS patients emulated</span></div>
+      <div class="stat" role="listitem"><b class="num">≤ 0.058</b><span>SMD vs. CREST-2 across endpoints</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ ABSTRACT ============ -->
+<section class="sec alt" id="abstract">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Abstract</span>
+      <h2>From trial protocol to executable pipeline</h2>
+    </div>
+    <div class="two">
+      <div class="read stack">
+        <p>Target trial emulation (TTE) enables causal inference from observational data but remains bottlenecked by manual, expert-dependent protocol operationalization. While large language models (LLMs) have advanced clinical knowledge extraction and code generation, their ability to automate end-to-end TTE workflows remains largely unexplored.</p>
+        <p>We present an LLM-driven framework using retrieval-augmented generation to extract the five core TTE design parameters from the Carotid Revascularization and Medical Management for Asymptomatic Carotid Stenosis Trial (CREST-2) protocol and generate executable phenotyping pipelines for real-world EHR data.</p>
+        <p>The framework was evaluated along two dimensions. First, protocol extraction accuracy was assessed against a gold-standard checklist of trial design components using precision, recall, and F1-score. Second, outcome validity was evaluated through population-level concordance analyses comparing EHR-derived outcomes with published trial endpoints using standardized mean difference, observed-to-expected ratios, confidence interval overlap, and two-proportion z-tests. Human-in-the-loop validation assessed the correctness of extracted clinical logic and phenotype definitions.</p>
+        <p>Together, these evaluations demonstrate a structured approach for assessing LLM-driven protocol-to-pipeline translation for scalable real-world evidence generation.</p>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <span class="k">RQ1 · PROTOCOL EXTRACTION</span>
+          <h4>Can an LLM extract valid TTE design parameters?</h4>
+          <p>To what extent can LLMs automatically extract and operationalize eligibility, treatment strategies, time zero, outcomes, causal contrasts and follow-up from a published trial protocol and structured data dictionaries, in line with TTE standards?</p>
+          <span class="maps">Answered by Table 4 · 24/26 elements correct on first pass</span>
+        </div>
+        <div class="card">
+          <span class="k">RQ2 · REAL-WORLD OUTCOMES</span>
+          <h4>Do LLM-built estimates match the trial?</h4>
+          <p>How do real-world outcome estimates produced by the LLM-driven emulation on EHR data compare with the published efficacy and safety endpoints of the CREST-2 randomized trial?</p>
+          <span class="maps">Answered by Table 5 · all endpoints statistically compatible</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="three" style="margin-top:1.25rem">
+      <div class="card"><span class="k">C1 · RQ1</span><p>An LLM-driven framework for automated TTE: the LLM parses a clinical trial protocol, extracts the five design parameters, and generates an executable analytic pipeline.</p></div>
+      <div class="card"><span class="k">C2 · RQ1</span><p>A systematic evaluation of human-in-the-loop validation showing where LLM-generated clinical logic needs expert review, and that domain oversight stays essential for valid phenotyping and code definitions.</p></div>
+      <div class="card"><span class="k">C3 · RQ2</span><p>Application to real-world EHR data and comparison with randomized trial endpoints, showing the pipeline produces clinically plausible and interpretable real-world evidence.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FRAMEWORK ============ -->
+<section class="sec" id="framework">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Framework · Figure 1</span>
+      <h2>Three LLM modules, two human checkpoints, two execution pipelines</h2>
+      <p class="lede read">Each design parameter is extracted from the CREST-2 protocol by the LLM and mapped to executable analytic logic against the Oracle EHR Healthcare Data Model, with clinician and informatician review between generation and execution.</p>
+    </div>
+    <figure>
+      <button class="plate" type="button" data-zoom="static/images/fig1_architecture.png" data-cap="Figure 1. System architecture for LLM-driven target trial emulation.">
+        <img src="static/images/fig1_architecture.png" alt="System architecture: RAG-augmented protocol parser, phenotype generator and cohort analyzer feed a modular phenotyping pipeline and causal inference statistics, with clinician-in-the-loop and informatician-in-the-loop review." loading="lazy">
+        <span class="zoom">click to zoom</span>
+      </button>
+      <figcaption><b>Figure 1.</b> System architecture for LLM-driven target trial emulation.</figcaption>
+    </figure>
+    <div class="arch-key">
+      <div class="a1"><h4>LLM-driven modules</h4><ul><li><b>RAG-augmented protocol parser</b> extracts structured TTE criteria</li><li><b>Phenotype generator</b> maps concepts to ICD-10-CM / CPT and writes code</li><li><b>Cohort analyzer</b> interprets cohort and outcome distributions</li></ul></div>
+      <div class="a2"><h4>Human-in-the-loop roles</h4><ul><li><b>Clinician in the Loop (CITL)</b> checks eligibility, outcomes, code sets and the clinical plausibility of results</li><li><b>Informatician in the Loop (IITL)</b> checks phenotype logic, data-model mappings and generated code</li></ul></div>
+      <div class="a3"><h4>Execution pipelines</h4><ul><li><b>Modular phenotyping pipeline</b> runs cohort assembly, outcome classification and event ascertainment at scale</li><li><b>Causal inference statistics</b> produces the estimates compared with trial endpoints</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PIPELINE ============ -->
+<section class="sec alt" id="pipeline">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Pipeline · Figure 2</span>
+      <h2>Five modules with an auditable chain from protocol to estimate</h2>
+      <p class="lede read">Every module has defined inputs and outputs. Select a module to see what it does and where a human reviews it.</p>
+    </div>
+    <div class="pipe">
+      <div>
+        <div class="steps" role="tablist" aria-label="Pipeline modules" id="steps"></div>
+        <div class="step-panel" id="stepPanel" role="tabpanel" aria-live="polite"></div>
+      </div>
+      <figure>
+        <button class="plate" type="button" data-zoom="static/images/fig2_pipeline.png" data-cap="Figure 2. Modular pipeline workflow for LLM-driven target trial emulation.">
+          <img src="static/images/fig2_pipeline.png" alt="Modular pipeline with modules M1 RAG knowledge base setup, M2 protocol parser, M3 phenotype generator, M4 phenotyping pipeline and M5 outcome analysis, with HITL checkpoints." loading="lazy">
+          <span class="zoom">click to zoom</span>
+        </button>
+        <figcaption><b>Figure 2.</b> Modular pipeline workflow for LLM-driven target trial emulation.</figcaption>
+      </figure>
+    </div>
+
+    <div class="two" style="margin-top:2rem">
+      <div class="card">
+        <span class="k">MODEL &amp; INFERENCE SETTINGS</span>
+        <dl class="kv">
+          <dt>LLM</dt><dd>Qwen3:8B via Ollama chat interface</dd>
+          <dt>Temperature</dt><dd class="num">0.3</dd>
+          <dt>Context window</dt><dd class="num">4,096 tokens</dd>
+          <dt>Compute</dt><dd>8 CPU threads, on-premises</dd>
+          <dt>PDF extraction</dt><dd>PyPDF2</dd>
+          <dt>Embeddings</dt><dd>all-MiniLM-L6-v2 sentence transformer</dd>
+          <dt>Vector store</dt><dd>ChromaDB · 52 protocol chunks with TTE-category tags</dd>
+          <dt>Code target</dt><dd>Python 3.10+, pandas / PySpark</dd>
+        </dl>
+      </div>
+      <div class="stack">
+        <div class="phi">
+          <svg><use href="#i-shield"/></svg>
+          <div><b>No PHI leaves the institution.</b> Every step that touches patient-level EHR data runs Qwen3:8B locally through Ollama, so no protected health information is sent to external servers. This keeps the workflow consistent with HIPAA and institutional data-governance policies.</div>
+        </div>
+        <div class="card">
+          <span class="k">DATA SOURCE · ORACLE HEALTH REAL-WORLD DATA</span>
+          <p>De-identified expert-determination release <code>real_world_data_ed_feb_2025</code>, covering 1 Jan 2015 to 28 Feb 2025.</p>
+          <div class="three" style="gap:.75rem">
+            <div><b class="num" style="font-family:var(--f-display);font-size:1.4rem">149</b><div class="small muted">US health systems</div></div>
+            <div><b class="num" style="font-family:var(--f-display);font-size:1.4rem">~2B</b><div class="small muted">encounters</div></div>
+            <div><b class="num" style="font-family:var(--f-display);font-size:1.4rem">~115M</b><div class="small muted">unique patients</div></div>
+          </div>
+          <div class="stack" style="gap:.4rem;margin-top:.25rem" aria-label="Census region representation">
+            <div class="region"><span>South</span><span class="bar"><i style="width:29%"></i></span><span class="v">29%</span></div>
+            <div class="region"><span>West</span><span class="bar"><i style="width:27%"></i></span><span class="v">27%</span></div>
+            <div class="region"><span>Midwest</span><span class="bar"><i style="width:24%"></i></span><span class="v">24%</span></div>
+            <div class="region"><span>Northeast</span><span class="bar"><i style="width:20%"></i></span><span class="v">20%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DESIGN PARAMETERS ============ -->
+<section class="sec" id="design">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Target trial specification · Hernán framework</span>
+      <h2>The five design parameters (5-DP template)</h2>
+      <p class="lede read">The 5-DP template is the intermediate representation between protocol text and executable code. Each tab shows the specification and how the LLM scored on the gold-standard checklist before human correction.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Design parameters" id="dpTabs"></div>
+    <div id="dpPanel" role="tabpanel"></div>
+  </div>
+</section>
+
+<!-- ============ HITL ============ -->
+<section class="sec alt" id="hitl">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Human-in-the-loop validation · Figure 3C</span>
+      <h2>Errors that run without crashing</h2>
+      <p class="lede read">Both errors the reviewer caught were syntactically valid. The code would have executed and produced clinically wrong cohorts, so only expert review could find them. Each was fixed in a single review iteration.</p>
+    </div>
+    <div class="two">
+      <div class="diff">
+        <div class="diff-bar" role="group" aria-label="Code version">
+          <div class="seg">
+            <button type="button" id="dBefore" aria-pressed="true">Initial LLM output</button>
+            <button type="button" id="dAfter" aria-pressed="false">After clinician review</button>
+          </div>
+        </div>
+<pre id="diffCode"></pre>
+        <div class="diff-note" id="diffNote"></div>
+      </div>
+      <div class="stack">
+        <h4>Structured review protocol</h4>
+        <ol class="review-steps">
+          <li>Verify ICD-10-CM and CPT code sets against published coding references.</li>
+          <li>Validate the logic of inclusion and exclusion criteria.</li>
+          <li>Verify temporal logic: date comparisons, window boundaries and blanking periods.</li>
+          <li>Run execution tests with diagnostic output to confirm expected counts and distributions.</li>
+        </ol>
+        <p class="callout">The current paradigm is best described as <b>human-supervised autonomous generation</b>: the LLM writes the pipeline logic while domain experts guarantee clinical and coding validity.</p>
+      </div>
+    </div>
+    <figure style="margin-top:1.75rem">
+      <button class="plate" type="button" data-zoom="static/images/fig3c_hitl.png" data-cap="Figure 3(C). Human-in-the-loop correction of the ischemic stroke code sets.">
+        <img src="static/images/fig3c_hitl.png" alt="Initial LLM output with empty ISCH_PREFIX and STROKE_ANY_PREFIX missing I63, human review identifying the issues, and corrected output." loading="lazy">
+        <span class="zoom">click to zoom</span>
+      </button>
+      <figcaption><b>Figure 3(C).</b> Initial LLM output, human review, and corrected output for the stroke code sets.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ PROMPTING ============ -->
+<section class="sec" id="prompting">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Prompting strategies · Figure 4</span>
+      <h2>Different prompting for generation and for execution</h2>
+      <p class="lede read">Each design parameter had its own prompt specifying clinical context, target parameter, output format, and constraints such as inpatient encounters only and specific ICD-10 / CPT code sets.</p>
+    </div>
+    <div class="prompt-map">
+      <div><span class="mods">M2 – M3 · protocol parsing &amp; phenotype generation</span><ul><li>Retrieval-augmented generation</li><li>Schema-constrained structured output</li><li>Task decomposition</li></ul></div>
+      <div><span class="mods">M4 – M5 · execution &amp; outcome analysis</span><ul><li>Chain-of-thought reasoning</li><li>Multi-turn iterative refinement</li><li>Domain-constrained prompting</li></ul></div>
+    </div>
+    <figure>
+      <button class="plate" type="button" data-zoom="static/images/fig4_prompting.png" data-cap="Figure 4. Prompting strategies used in the LLM-driven pipeline for target trial emulation.">
+        <img src="static/images/fig4_prompting.png" alt="Six prompting strategy examples: RAG, schema-constrained output, task decomposition, chain-of-thought reasoning, multi-iterative refinement and domain-constrained prompting." loading="lazy">
+        <span class="zoom">click to zoom</span>
+      </button>
+      <figcaption><b>Figure 4.</b> Prompting strategies used in the LLM-driven pipeline for target trial emulation.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ RESULTS ============ -->
+<section class="sec alt" id="results">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Results · RQ1</span>
+      <h2>Protocol extraction performance</h2>
+      <p class="lede read">Gold-standard checklist of 26 sub-components across the five design parameters, scored on LLM output before any human correction. Precision of 1.00 means the LLM added no criteria, codes or rules beyond what CREST-2 specifies.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Design parameter</th><th class="r">TP</th><th class="r">FN</th><th class="r">FP</th><th class="r">Precision</th><th class="r">Recall</th><th class="r">F1</th><th>Accuracy</th><th>Errors identified</th></tr></thead>
+        <tbody id="extractBody"></tbody>
+      </table>
+    </div>
+    <p class="tbl-note">TP = element correctly extracted and matching the protocol. FN = element required by the protocol but incorrectly specified. FP = element generated by the LLM but not in or required by CREST-2. Precision = TP/(TP+FP); Recall = TP/(TP+FN); F1 = 2PR/(P+R).</p>
+
+    <div class="sec-head" style="margin-top:3rem">
+      <span class="eyebrow">Results · Table 1 (extended)</span>
+      <h3>Baseline characteristics of asymptomatic CAS patients</h3>
+      <p class="muted read">The manuscript reports only the characteristics also published for CREST-2. This is the full set of 32 variables derived from the EHR cohort. Bars compare prevalence in the <span class="ehr-c">EHR cohort</span> and, where reported, the <span class="trial-c">CREST-2 CAS arm</span>.</p>
+    </div>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Variables shown">
+        <button type="button" data-base="all" aria-pressed="true">All variables</button>
+        <button type="button" data-base="matched" aria-pressed="false">Reported in CREST-2</button>
+      </div>
+      <span class="small muted" id="baseCount">32 variables shown</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Variable</th><th class="r">EHR (N = 5,831)</th><th class="r">CREST-2 (N = 616)</th><th class="r">p-value</th><th>Comparison</th></tr></thead>
+        <tbody id="baseBody"></tbody>
+      </table>
+    </div>
+
+    <div class="sec-head" style="margin-top:3rem">
+      <span class="eyebrow">Results · RQ2 · Table 2</span>
+      <h3>Outcomes after carotid artery stenting in EHR data</h3>
+    </div>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Follow-up window">
+        <button type="button" data-win="both" aria-pressed="true">Both windows</button>
+        <button type="button" data-win="peri" aria-pressed="false">0–44 days</button>
+        <button type="button" data-win="long" aria-pressed="false">45 d – 4 y</button>
+      </div>
+      <span class="small muted">Click a column header to sort</span>
+    </div>
+    <div class="tbl-wrap">
+      <table id="outTable">
+        <thead><tr>
+          <th class="sortable" data-k="name">Outcome</th>
+          <th class="sortable r" data-k="peri" data-col="peri">0–44 days post-CAS</th>
+          <th class="sortable r" data-k="long" data-col="long">45 d – 4 y post-CAS</th>
+        </tr></thead>
+        <tbody id="outBody"></tbody>
+      </table>
+    </div>
+    <p class="tbl-note">Events (rate; 95% CI). Periprocedural composite of 2.11% compares with 1.3% in CREST-2 (8 events: 7 strokes, 1 death among 616 patients). The EHR composite counts all strokes, not only ipsilateral, and includes operators with a broader range of experience.</p>
+
+    <div class="sec-head" style="margin-top:3rem">
+      <span class="eyebrow">Results · Supplementary Figures S1 &amp; S2</span>
+      <h3>Kaplan–Meier event-free survival after CAS</h3>
+      <p class="muted read">Not included in the manuscript. Event-free survival for the two CREST-2 endpoint windows in the EHR cohort (N = 5,831), with 95% confidence bands and the number at risk.</p>
+    </div>
+    <div class="two">
+      <figure>
+        <button class="plate" type="button" data-zoom="static/images/km_0-44d.png" data-cap="Figure S1. Composite of incident ischemic stroke or all-cause death within 44 days. 123 events; S(44 d) = 0.9789.">
+          <img src="static/images/km_0-44d.png" alt="Kaplan–Meier curve for the composite of ischemic stroke or death within 44 days, falling from 1.000 to 0.9789 with 123 events; number at risk 5,831 at day 0 and 5,711 at day 42." loading="lazy">
+          <span class="zoom">click to zoom</span>
+        </button>
+        <figcaption><b>Figure S1.</b> Ischemic stroke or all-cause death, day 0–44. 123 events (2.1%); S(t<sub>max</sub>) = 0.9789.</figcaption>
+      </figure>
+      <figure>
+        <button class="plate" type="button" data-zoom="static/images/km_45d-4y.png" data-cap="Figure S2. New ischemic stroke from day 45 through 4 years. 179 events; S(t max) = 0.9693.">
+          <img src="static/images/km_45d-4y.png" alt="Kaplan–Meier curve for new ischemic stroke from day 45 through 4 years, falling to 0.9693 with 179 events; number at risk 5,831 at start and 5,652 at day 1,460." loading="lazy">
+          <span class="zoom">click to zoom</span>
+        </button>
+        <figcaption><b>Figure S2.</b> New ischemic stroke, day 45 to 4 years. 179 events (3.1%); S(t<sub>max</sub>) = 0.9693.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CONCORDANCE ============ -->
+<section class="sec" id="concordance">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Results · RQ2 · Tables 3 &amp; 5</span>
+      <h2>Concordance with the CREST-2 trial</h2>
+      <p class="lede read">The two populations contain different patients from different sources, so agreement is measured at the population level with four standard metrics. The strongest agreement was for all-cause mortality, reflecting reliable mortality capture in EHR data.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Outcome</th><th class="r">EHR (95% CI)</th><th class="r">CREST-2 (95% CI)</th><th class="r">SMD</th><th class="r">O/E</th><th>CI overlap</th><th class="r">z-test p</th><th>Remark</th></tr></thead>
+        <tbody>
+          <tr><td>Periprocedural stroke / death (0–44 d)</td><td class="r"><span class="ehr-c">2.11%</span><br><span class="small muted">1.76–2.51</span></td><td class="r"><span class="trial-c">1.3%</span><br><span class="small muted">0.6–2.5</span></td><td class="r">0.058</td><td class="r">1.62</td><td>Yes</td><td class="r">0.138</td><td><span class="pill warn">Compatible</span></td></tr>
+          <tr><td>New ischemic stroke (45 d – 4 y)</td><td class="r"><span class="ehr-c">3.07%</span><br><span class="small muted">2.64–3.55</span></td><td class="r"><span class="trial-c">2.8%</span><br><span class="small muted">1.4–4.3</span></td><td class="r">0.016</td><td class="r">1.10</td><td>Yes (within)</td><td class="r">0.722</td><td><span class="pill warn">Compatible</span></td></tr>
+          <tr><td>All-cause mortality (4 y)</td><td class="r"><span class="ehr-c">6.93%</span><br><span class="small muted">6.29–7.61</span></td><td class="r"><span class="trial-c">7.1%</span><br><span class="small muted">5.3–9.4</span></td><td class="r">0.007</td><td class="r">0.98</td><td>Yes</td><td class="r">0.872</td><td><span class="pill good">Concordant</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-note">SMD &lt; 0.10 = negligible difference. O/E 0.80–1.20 = good concordance with the trial benchmark. Overlapping 95% CIs = statistical compatibility. z-test p &gt; 0.05 = no statistically significant difference.</p>
+  </div>
+</section>
+
+<!-- ============ DISCUSSION ============ -->
+<section class="sec alt" id="discussion">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Discussion</span>
+      <h2>What this shows, and what it does not</h2>
+    </div>
+    <div class="three">
+      <div class="card"><span class="k">KEY CONTRIBUTIONS</span>
+        <p>A structured <b>five-design-parameter template</b> that forces every TTE component to be defined before code is generated.</p>
+        <p>A <b>multi-model, HIPAA-compliant architecture</b> that separates protocol reasoning from patient-level computation.</p>
+        <p>A <b>vascular territory-specific stroke classification</b> (anterior vs. posterior circulation) for finer outcome ascertainment.</p>
+      </div>
+      <div class="card"><span class="k">LIMITATIONS</span>
+        <p>Evaluated on a single trial (CREST-2) and a single EHR data source.</p>
+        <p>LLM outputs are non-deterministic; generated code can vary across runs without strict version control.</p>
+        <p>No randomization or confounding adjustment, so comparisons with trial results are descriptive rather than causal.</p>
+      </div>
+      <div class="card"><span class="k">FUTURE WORK</span>
+        <p>Cross-reference generated code sets against phenotype libraries such as PheKB and eMERGE.</p>
+        <p>Automated unit tests for temporal logic and code-set membership.</p>
+        <p>LLM-as-judge review of clinical plausibility, and simulation with synthetic EHR data of known event rates.</p>
+      </div>
+    </div>
+
+    <div class="two" style="margin-top:2rem">
+      <div class="card" id="amia">
+        <span class="k">AMIA 2026 ANNUAL SYMPOSIUM</span>
+        <h4>Accepted for Podium Presentation</h4>
+        <p>This work was accepted as a podium (oral) presentation at the American Medical Informatics Association 2026 Annual Symposium.</p>
+        <div class="btns" style="margin-top:.25rem">
+          <a class="btn amia" href="https://amia.secure-platform.com/symposium/gallery/rounds/82037/details/30164" target="_blank" rel="noopener"><svg><use href="#i-podium"/></svg>View on AMIA 2026</a>
+          <a class="btn ghost" href="https://amia.org/education-events/amia-2026-annual-symposium" target="_blank" rel="noopener">Symposium site</a>
+        </div>
+      </div>
+      <div class="card" id="availability">
+        <span class="k">DATA &amp; CODE AVAILABILITY</span>
+        <h4>Preprint on medRxiv</h4>
+        <p>The manuscript was posted on medRxiv before submission (DOI <a href="https://doi.org/10.64898/2026.04.09.26350523" target="_blank" rel="noopener">10.64898/2026.04.09.26350523</a>). Analytical code and methodology are available from the authors on reasonable request. Oracle Health Real-World Data is licensed and cannot be redistributed.</p>
+        <div class="btns" style="margin-top:.25rem">
+          <a class="btn medrxiv" href="https://www.medrxiv.org/content/10.64898/2026.04.09.26350523v1.full" target="_blank" rel="noopener"><svg><use href="#i-medrxiv"/></svg>Read on medRxiv</a>
+          <a class="btn ghost" href="https://github.com/" target="_blank" rel="noopener" id="repoLink"><svg><use href="#i-github"/></svg>GitHub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CITATION ============ -->
+<section class="sec" id="citation">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Citation</span>
+      <h2>BibTeX</h2>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Citation format">
+      <button class="tab" type="button" role="tab" aria-selected="true" data-cite="medrxiv">medRxiv preprint</button>
+      <button class="tab" type="button" role="tab" aria-selected="false" data-cite="amia">AMIA 2026</button>
+    </div>
+    <div class="cite">
+      <button class="copy-btn" type="button" id="copyBib">Copy</button>
+<pre id="bib"></pre>
+    </div>
+
+    <details style="margin-top:2rem">
+      <summary class="eyebrow" style="cursor:pointer">Selected references</summary>
+      <ol class="refs" style="margin-top:.75rem">
+        <li>Hernán MA, Robins JM. Using Big Data to Emulate a Target Trial When a Randomized Trial Is Not Available. <i>Am J Epidemiol</i>. 2016;183(8):758-764. <a href="https://doi.org/10.1093/aje/kwv254" target="_blank" rel="noopener">doi</a></li>
+        <li>Brott TG, Howard G, Lal BK, et al. Medical Management and Revascularization for Asymptomatic Carotid Stenosis. <i>N Engl J Med</i>. 2026;394(3):219-231. <a href="https://doi.org/10.1056/NEJMoa2508800" target="_blank" rel="noopener">doi</a></li>
+        <li>Cashin AG, Hansford HJ, Hernán MA, et al. Transparent Reporting of Observational Studies Emulating a Target Trial: The TARGET Statement. <i>JAMA</i>. 2025;334(12):1084-1093. <a href="https://doi.org/10.1001/jama.2025.13350" target="_blank" rel="noopener">doi</a></li>
+        <li>Petersen M, Alaa A, Kıcıman E, Holmes C, van der Laan M. Artificial Intelligence–Based Copilots to Generate Causal Evidence. <i>NEJM AI</i>. 2024;1(12). <a href="https://doi.org/10.1056/AIp2400727" target="_blank" rel="noopener">doi</a></li>
+        <li>Yang A, Li A, Yang B, et al. Qwen3 Technical Report. arXiv:2505.09388. 2025. <a href="https://doi.org/10.48550/arXiv.2505.09388" target="_blank" rel="noopener">doi</a></li>
+      </ol>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>LLM-Driven Target Trial Emulation · Institute for Data Science and Informatics, University of Missouri</span>
+    <span>Page layout adapted from the <a href="https://cimilab.github.io/Bangla_MedConv" target="_blank" rel="noopener">Bangla MedConv</a> project page.</span>
+  </div>
+</footer>
+
+<dialog class="lightbox" id="lightbox">
+  <button type="button" id="lbClose" aria-label="Close">Close ✕</button>
+  <img id="lbImg" src="data:," alt="">
+  <p id="lbCap"></p>
+</dialog>
+
+<script src="static/js/main.js"></script>
+</body>
+</html>
